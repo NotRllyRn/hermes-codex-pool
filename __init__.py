@@ -7,9 +7,11 @@ _module = run_path(str(Path(__file__).with_name("codex_pool.py")))
 handle_cli = _module["handle_cli"]
 handle_slash = _module["handle_slash"]
 setup_cli = _module["setup_cli"]
+setup_hooks = _module["setup_hooks"]
 
 
 def register(ctx) -> None:
+    setup_hooks(ctx)
     ctx.register_cli_command(
         name="codex-pool",
         help="Manage OpenAI Codex OAuth pool entries",

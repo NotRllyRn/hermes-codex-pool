@@ -6,7 +6,7 @@ import uuid
 from dataclasses import replace
 from datetime import datetime, timezone
 from importlib import import_module
-from typing import Any
+from typing import Any, Callable
 
 PROVIDER = "openai-codex"
 INCOMPATIBLE = (
@@ -22,12 +22,12 @@ class CompatibilityError(RuntimeError):
 # HERMES INTERNAL API BOUNDARY: review COMPATIBILITY.md before changing the
 # supported Hermes version. Missing/renamed symbols must fail without secrets.
 try:
-    _usage = import_module("agent.account_usage")
+    _account_usage = import_module("agent.account_usage")
     _pool = import_module("agent.credential_pool")
     _auth = import_module("hermes_cli.auth")
     _prompts = import_module("hermes_cli.secret_prompt")
 
-    fetch_account_usage = _usage.fetch_account_usage
+    fetch_account_usage = _account_usage.fetch_account_usage
     AUTH_TYPE_OAUTH = _pool.AUTH_TYPE_OAUTH
     SOURCE_MANUAL_DEVICE_CODE = _pool.SOURCE_MANUAL_DEVICE_CODE
     STATUS_DEAD = _pool.STATUS_DEAD
@@ -214,6 +214,111 @@ def _format_usage(snapshot: Any) -> list[str]:
     return lines or ["usage unavailable"]
 
 
+def _fetch_usage(entry):
+    return fetch_account_usage(
+        PROVIDER,
+        base_url=entry.runtime_base_url or DEFAULT_CODEX_BASE_URL,
+        api_key=entry.runtime_api_key,
+    )
+
+
+def _weekly_window(snapshot):
+    if snapshot is None or not getattr(snapshot, "available", True):
+        return None
+    return next(
+        (window for window in getattr(snapshot, "windows", ()) if str(window.label).casefold() == "weekly"),
+        None,
+    )
+
+
+def _weekly_reset(window) -> datetime | None:
+    reset = getattr(window, "reset_at", None)
+    if not isinstance(reset, datetime):
+        return None
+    return reset.replace(tzinfo=timezone.utc) if reset.tzinfo is None else reset.astimezone(timezone.utc)
+
+
+def preferred_credential_id(provider: str) -> str | None:
+    """Choose the healthy Codex entry whose Weekly window resets first."""
+    if provider != PROVIDER:
+        return None
+    try:
+        entries = [entry for entry in load_pool(PROVIDER).entries() if _local_state(entry) == "available"]
+        ranked = []
+        for index, entry in enumerate(entries):
+            reset = _weekly_reset(_weekly_window(_fetch_usage(entry)))
+            if reset is None:
+                return None
+            ranked.append((reset, index, entry.id))
+        return min(ranked)[2] if ranked else None
+    except Exception:
+        return None
+
+
+def _weekly_summary(entry) -> str:
+    try:
+        window = _weekly_window(_fetch_usage(entry))
+        if window is None:
+            return "Weekly usage unavailable"
+        used = float(window.used_percent)
+        return f"Weekly {max(0, round(100 - used))}% left{_reset_text(window.reset_at)}"
+    except (AttributeError, TypeError, ValueError):
+        return "Weekly usage unavailable"
+
+
+def build_hook_handlers(emit: Callable[[str], Any] = print):
+    """Build fail-open selection and truthful request-observer callbacks."""
+    preferred: dict[str, str] = {}
+    shown: dict[str, None] = {}
+
+    def remember(mapping: dict, key: str, value) -> None:
+        mapping[key] = value
+        if len(mapping) > 256:
+            mapping.pop(next(iter(mapping)))
+
+    def select_hook(**payload):
+        if payload.get("provider") != PROVIDER:
+            return None
+        session_id = str(payload.get("session_id") or "")
+        credential_id = preferred_credential_id(PROVIDER)
+        preferred.pop(session_id, None)
+        if credential_id:
+            remember(preferred, session_id, credential_id)
+            return {"credential_id": credential_id}
+        return None
+
+    def request_hook(**payload):
+        if payload.get("provider") != PROVIDER:
+            return None
+        turn_id = str(payload.get("turn_id") or "")
+        credential_id = str(payload.get("credential_id") or "")
+        if not turn_id or not credential_id or turn_id in shown:
+            return None
+        remember(shown, turn_id, None)
+        session_id = str(payload.get("session_id") or "")
+        intended = preferred.pop(session_id, None)
+        try:
+            entry = next(
+                (entry for entry in load_pool(PROVIDER).entries() if entry.id == credential_id),
+                None,
+            )
+            label = str(payload.get("credential_label") or getattr(entry, "label", None) or credential_id)
+            usage = _weekly_summary(entry) if entry is not None else "Weekly usage unavailable"
+            reason = "earliest weekly reset" if intended == credential_id else "Hermes selected available credential"
+            emit(f"[Codex: {label} · {usage} · {reason}]")
+        except Exception:
+            return None
+        return None
+
+    return select_hook, request_hook
+
+
+def setup_hooks(ctx) -> None:
+    select_hook, request_hook = build_hook_handlers()
+    ctx.register_hook("pre_credential_select", select_hook)
+    ctx.register_hook("pre_api_request", request_hook)
+
+
 def status_accounts(target: str | None = None) -> str:
     """Show local state and provider-reported usage for each selected entry."""
     _require_hermes()
@@ -231,11 +336,7 @@ def status_accounts(target: str | None = None) -> str:
     for index, entry in entries:
         lines.append(f"#{index}  {entry.label}  {_local_state(entry)}")
         try:
-            snapshot = fetch_account_usage(
-                PROVIDER,
-                base_url=entry.runtime_base_url or DEFAULT_CODEX_BASE_URL,
-                api_key=entry.runtime_api_key,
-            )
+            snapshot = _fetch_usage(entry)
         except Exception:
             snapshot = None
         lines.extend(f"    {line}" for line in _format_usage(snapshot))

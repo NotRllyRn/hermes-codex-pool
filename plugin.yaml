@@ -1,4 +1,7 @@
 name: hermes-codex-pool
-version: "0.1.0"
-description: Manage OpenAI Codex OAuth credentials in Hermes and inspect per-account usage.
+version: "0.2.0"
+description: Manage and select OpenAI Codex OAuth credentials in Hermes and inspect per-account usage.
 author: NotRllyRn
+provides_hooks:
+  - pre_credential_select
+  - pre_api_request

@@ -94,12 +94,14 @@ def test_registration_and_cli_parser():
     assert spec is not None and spec.loader is not None
     plugin = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(plugin)
-    ctx = SimpleNamespace(cli=[], slash=[])
+    ctx = SimpleNamespace(cli=[], slash=[], hooks=[])
+    ctx.register_hook = lambda name, callback: ctx.hooks.append((name, callback))
     ctx.register_cli_command = lambda **kwargs: ctx.cli.append(kwargs)
     ctx.register_command = lambda *args, **kwargs: ctx.slash.append((args, kwargs))
 
     plugin.register(ctx)
 
+    assert [name for name, _callback in ctx.hooks] == ["pre_credential_select", "pre_api_request"]
     assert ctx.cli[0]["name"] == "codex-pool"
     assert ctx.slash[0][0] == ("codex-pool",)
     parser = argparse.ArgumentParser()
@@ -191,14 +193,102 @@ def test_list_empty_pool_has_setup_hint(monkeypatch):
     assert subject.list_accounts().endswith("hermes codex-pool add")
 
 
-def snapshot(used=28):
+def snapshot(used=28, weekly_used=62, weekly_reset=None):
     window = SimpleNamespace(
         label="Session",
         used_percent=used,
         reset_at=datetime.now(timezone.utc) + timedelta(hours=2, minutes=15),
     )
-    weekly = SimpleNamespace(label="Weekly", used_percent=62, reset_at=None)
+    weekly = SimpleNamespace(label="Weekly", used_percent=weekly_used, reset_at=weekly_reset)
     return SimpleNamespace(available=True, windows=(window, weekly))
+
+
+def test_preference_chooses_earliest_healthy_weekly_reset(monkeypatch):
+    now = datetime.now(timezone.utc)
+    entries = [
+        Entry(id="one111", label="one"),
+        Entry(id="dead22", label="dead", last_status=subject.STATUS_DEAD),
+        Entry(id="two222", label="two"),
+    ]
+    use_pool(monkeypatch, entries)
+    resets = {"one111": now + timedelta(days=2), "two222": now + timedelta(hours=4)}
+    monkeypatch.setattr(
+        subject,
+        "fetch_account_usage",
+        lambda _provider, **kwargs: snapshot(weekly_reset=resets["one111" if kwargs["api_key"] == "access-secret" else "two222"]),
+    )
+    entries[2].access_token = "second-token"
+
+    assert subject.preferred_credential_id(subject.PROVIDER) == "two222"
+
+
+def test_preference_is_stable_on_ties_and_fails_open(monkeypatch):
+    reset = datetime.now(timezone.utc) + timedelta(days=1)
+    use_pool(monkeypatch, [Entry(id="one111"), Entry(id="two222", access_token="second")])
+    monkeypatch.setattr(subject, "fetch_account_usage", lambda *_a, **_k: snapshot(weekly_reset=reset))
+    assert subject.preferred_credential_id(subject.PROVIDER) == "one111"
+    assert subject.preferred_credential_id("anthropic") is None
+    monkeypatch.setattr(subject, "fetch_account_usage", lambda *_a, **_k: None)
+    assert subject.preferred_credential_id(subject.PROVIDER) is None
+
+
+def test_hooks_request_preference_and_show_actual_once(monkeypatch):
+    reset = datetime.now(timezone.utc) + timedelta(hours=18)
+    entries = [Entry(id="one111", label="work"), Entry(id="two222", label="backup")]
+    use_pool(monkeypatch, entries)
+    monkeypatch.setattr(subject, "preferred_credential_id", lambda _provider: "one111")
+    monkeypatch.setattr(subject, "fetch_account_usage", lambda *_a, **_k: snapshot(weekly_reset=reset))
+    lines = []
+    select_hook, request_hook = subject.build_hook_handlers(lines.append)
+
+    assert select_hook(provider=subject.PROVIDER, session_id="session") == {"credential_id": "one111"}
+    request_hook(
+        provider=subject.PROVIDER,
+        session_id="session",
+        turn_id="turn-1",
+        credential_id="one111",
+        credential_label="work",
+    )
+    request_hook(
+        provider=subject.PROVIDER,
+        session_id="session",
+        turn_id="turn-1",
+        credential_id="one111",
+        credential_label="work",
+    )
+
+    assert len(lines) == 1
+    assert lines[0].startswith("[Codex: work · Weekly 38% left · resets in 17h")
+    assert lines[0].endswith("· earliest weekly reset]")
+
+
+def test_request_hook_reports_hermes_actual_identity(monkeypatch):
+    entries = [Entry(id="one111", label="intended"), Entry(id="two222", label="actual")]
+    use_pool(monkeypatch, entries)
+    monkeypatch.setattr(subject, "preferred_credential_id", lambda _provider: "one111")
+    monkeypatch.setattr(subject, "fetch_account_usage", lambda *_a, **_k: None)
+    lines = []
+    select_hook, request_hook = subject.build_hook_handlers(lines.append)
+    select_hook(provider=subject.PROVIDER, session_id="session")
+    request_hook(
+        provider=subject.PROVIDER,
+        session_id="session",
+        turn_id="turn-2",
+        credential_id="two222",
+        credential_label="actual",
+    )
+    assert lines == [
+        "[Codex: actual · Weekly usage unavailable · Hermes selected available credential]"
+    ]
+
+
+def test_hooks_ignore_other_providers_and_missing_identity(monkeypatch):
+    monkeypatch.setattr(subject, "preferred_credential_id", lambda _provider: pytest.fail("wrong provider"))
+    lines = []
+    select_hook, request_hook = subject.build_hook_handlers(lines.append)
+    assert select_hook(provider="anthropic") is None
+    assert request_hook(provider=subject.PROVIDER, turn_id="turn", credential_id=None) is None
+    assert lines == []
 
 
 def test_status_fetches_each_explicit_credential_and_renders_usage(monkeypatch):
