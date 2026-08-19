@@ -14,6 +14,13 @@ INCOMPATIBLE = (
     "Update the plugin or use a supported Hermes version."
 )
 
+
+class CompatibilityError(RuntimeError):
+    """The installed Hermes does not expose the required API boundary."""
+
+
+# HERMES INTERNAL API BOUNDARY: review COMPATIBILITY.md before changing the
+# supported Hermes version. Missing/renamed symbols must fail without secrets.
 try:
     _usage = import_module("agent.account_usage")
     _pool = import_module("agent.credential_pool")
@@ -41,7 +48,7 @@ except (ImportError, AttributeError) as exc:  # Keep registration available so c
     DEFAULT_CODEX_BASE_URL = "https://chatgpt.com/backend-api/codex"
 
     def _missing(*_args, **_kwargs):
-        raise RuntimeError(INCOMPATIBLE)
+        raise CompatibilityError(INCOMPATIBLE)
 
     PooledCredential = fetch_account_usage = get_pool_strategy = load_pool = _missing
     mark_provider_active_if_unset = write_credential_pool = masked_secret_prompt = _missing
@@ -51,7 +58,7 @@ else:
 
 def _require_hermes() -> None:
     if _IMPORT_ERROR is not None:
-        raise RuntimeError(INCOMPATIBLE) from None
+        raise CompatibilityError(INCOMPATIBLE) from None
 
 
 def setup_cli(parser) -> None:
@@ -91,7 +98,7 @@ def handle_cli(args) -> None:
             result = remove_account(args.target, yes=args.yes)
         else:  # argparse should make this unreachable.
             result = "Unknown codex-pool action."
-    except RuntimeError:
+    except CompatibilityError:
         result = INCOMPATIBLE
     print(result)
 
@@ -248,6 +255,7 @@ def rename_account(target: str, new_label: str) -> str:
     if _label_exists(entries, label, exclude_id=entry.id):
         return f'Label "{label}" already exists. Use a unique label.'
     updated = [replace(item, label=label) if item.id == entry.id else item for item in entries]
+    # Internal writer preserves Hermes' auth-store lock and concurrent merges.
     write_credential_pool(PROVIDER, [item.to_dict() for item in updated])
     return f'Renamed "{entry.label}" to "{label}".'
 
@@ -273,7 +281,7 @@ def handle_slash(raw_args: str) -> str:
     if action in {"", "status"}:
         try:
             return status_accounts()
-        except RuntimeError:
+        except CompatibilityError:
             return INCOMPATIBLE
     if action == "help":
         return "Usage: /codex-pool [status|help]"

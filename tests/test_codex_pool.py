@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
-import pytest
+import pytest  # type: ignore[import-not-found]
 
 _ROOT = Path(__file__).parents[1]
 _SUBJECT_SPEC = importlib.util.spec_from_file_location("codex_pool", _ROOT / "codex_pool.py")
@@ -298,3 +298,11 @@ def test_slash_help_and_mutations():
     assert subject.handle_slash("help") == "Usage: /codex-pool [status|help]"
     assert "terminal-only" in subject.handle_slash("add")
     assert "terminal-only" in subject.handle_slash("remove work")
+
+
+def test_missing_hermes_api_is_sanitized(monkeypatch, capsys):
+    monkeypatch.setattr(subject, "_IMPORT_ERROR", ImportError("sensitive path"))
+    subject.handle_cli(SimpleNamespace(codex_pool_action="list"))
+    output = capsys.readouterr().out
+    assert subject.INCOMPATIBLE in output
+    assert "sensitive path" not in output

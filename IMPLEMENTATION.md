@@ -7,6 +7,8 @@
 **Target:** Hermes Agent `0.20.0` and current `main` as researched on **2026-08-11**  
 **Design principle:** YAGNI — manage credentials and display status; let Hermes own routing, refresh, retry, cooldown, and failover.
 
+> **Implementation status:** v0.1.0 code complete on 2026-08-19. The API boundary was rechecked against Hermes 0.20.4/main `395c70d6`; see `COMPATIBILITY.md`. Live-account acceptance checks remain release-time manual tests because they require real OAuth credentials.
+
 ---
 
 ## 1. Executive decision
@@ -1372,46 +1374,46 @@ Never include a raw exception if it may include Authorization headers/tokens. In
 
 ### Phase 1 — skeleton
 
-- [ ] Create GitHub repository.
-- [ ] Add `plugin.yaml`.
-- [ ] Add tiny `__init__.py` registration.
-- [ ] Register `hermes codex-pool` with an empty `status` command.
-- [ ] Confirm install/enable from GitHub.
+- [x] Create GitHub repository.
+- [x] Add `plugin.yaml`.
+- [x] Add tiny `__init__.py` registration.
+- [x] Register `hermes codex-pool` with a default `status` command.
+- [ ] Confirm install/enable from GitHub after pushing v0.1.0.
 
 ### Phase 2 — local credential CRUD
 
-- [ ] Implement `list` using `load_pool().entries()`.
-- [ ] Implement `add` using `masked_secret_prompt` + `PooledCredential` + `pool.add_entry`.
-- [ ] Match Hermes Codex fields exactly: OAuth + `manual:device_code`.
-- [ ] Call `mark_provider_active_if_unset` for first entry.
-- [ ] Implement target resolution with `pool.resolve_target`.
-- [ ] Implement `remove` with `pool.remove_index`.
-- [ ] Implement `rename` with `dataclasses.replace` + `write_credential_pool`.
+- [x] Implement `list` using `load_pool().entries()`.
+- [x] Implement `add` using `masked_secret_prompt` + `PooledCredential` + `pool.add_entry`.
+- [x] Match Hermes Codex fields exactly: OAuth + `manual:device_code`.
+- [x] Call `mark_provider_active_if_unset` for first entry.
+- [x] Implement target resolution with `pool.resolve_target`.
+- [x] Implement `remove` with `pool.remove_index`.
+- [x] Implement `rename` with `dataclasses.replace` + `write_credential_pool`.
 
 ### Phase 3 — usage dashboard
 
-- [ ] Implement `status [target]`.
-- [ ] Call `fetch_account_usage` with explicit entry token/base URL.
-- [ ] Render Session and Weekly remaining/reset.
-- [ ] Show Hermes strategy from `get_pool_strategy`.
-- [ ] Fail per-account usage lookup independently.
+- [x] Implement `status [target]`.
+- [x] Call `fetch_account_usage` with explicit entry token/base URL.
+- [x] Render Session and Weekly remaining/reset.
+- [x] Show Hermes strategy from `get_pool_strategy`.
+- [x] Fail per-account usage lookup independently.
 
 ### Phase 4 — read-only slash command
 
-- [ ] Register `/codex-pool`.
-- [ ] Expose status/help only.
-- [ ] Explicitly reject mutation args.
+- [x] Register `/codex-pool`.
+- [x] Expose status/help only.
+- [x] Explicitly reject mutation args.
 
 ### Phase 5 — tests/docs
 
-- [ ] Add unit tests above.
-- [ ] Test against temporary `HERMES_HOME`.
+- [x] Add isolated unit tests; no real OpenAI or Hermes-home access.
+- [ ] Test native persistence against temporary `HERMES_HOME` in an installed Hermes runtime.
 - [ ] Install from GitHub into a clean Hermes instance.
 - [ ] Import two token pairs.
 - [ ] Confirm `hermes auth list openai-codex` sees the same entries.
 - [ ] Confirm `hermes codex-pool status` shows correct account usage.
 - [ ] Run a real Hermes task and verify native Hermes rotation works without plugin intervention.
-- [ ] Update README screenshots/text only after actual output is stable.
+- [x] Document the stable v0.1.0 command output and compatibility boundary.
 
 ---
 
