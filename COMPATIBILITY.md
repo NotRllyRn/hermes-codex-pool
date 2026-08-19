@@ -2,28 +2,30 @@
 
 ## Baseline
 
-`hermes-codex-pool` **0.1.0** is built from the Hermes Agent **0.20.0** contract at upstream commit `3c27eb6234bf91b8ceee9e9071591b31e9b148cb` (released 2026-08-03).
+Credential management was built from the Hermes Agent **0.20.0** contract at upstream commit `3c27eb6234bf91b8ceee9e9071591b31e9b148cb`.
 
-The same API signatures were source-checked on 2026-08-19 against:
+`hermes-codex-pool` **0.2.0** additionally targets the external-plugin contract described in `HERMES_UPSTREAM_CREDENTIAL_HOOKS_PLAN.md`:
 
-- Hermes Agent **0.20.4**
-- upstream `main` commit `395c70d616f6426e990632ff8b57cf1e9499702f`
-- Python requirement `>=3.11,<3.14`
+- `pre_credential_select` accepts `{"credential_id": "..."}` once per turn;
+- `pre_api_request` reports `turn_id`, `credential_id`, and `credential_label`;
+- hook callbacks accept additive fields through `**kwargs`.
 
-This file is the update checkpoint. Change the commit, package version, date, and matrix whenever compatibility is revalidated.
+That contract is assumed to exist on the post-merge Hermes build. Upstream `main` at `fdf6f1d4c80f510c1d579e7fc3b2769f81a97892` (2026-08-19, package 0.20.4) does not yet contain it, so its Plugin Doctor correctly rejects the v0.2.0 manifest. Use plugin v0.1.0 with stock Hermes 0.20.x.
+
+This file is the update checkpoint. Replace the provisional requirement with the first released Hermes version and commit containing the hooks after merge.
 
 ## Compatibility matrix
 
 | Plugin | Hermes | Status | Verification |
 | --- | --- | --- | --- |
-| 0.1.0 | 0.20.0 | Verified | Real-API import, credential construction, registration + unit tests |
-| 0.1.0 | 0.20.4 | Verified | Plugin Doctor + temporary-home native CRUD at `395c70d6` + unit tests |
+| 0.1.0 | 0.20.0–0.20.4 | Verified | Native API import, Plugin Doctor, temporary-home CRUD, unit tests |
+| 0.2.0 | Post-hook merge | Contract-tested | Hook registration/payload, policy, truthful identity, deduplication |
 
-A live Codex login, token refresh, quota exhaustion, and provider failover require real accounts and are not exercised by the unit suite.
+A live Codex login, token refresh, quota exhaustion, provider failover, and merged-upstream Plugin Doctor run remain release checks.
 
 ## Internal API boundary
 
-Plugin registration is documented by Hermes. Credential management necessarily uses implementation-level APIs:
+Hook registration and payload evolution are documented Hermes plugin surfaces. Credential management and usage necessarily use implementation-level APIs:
 
 - `agent.credential_pool.PooledCredential`
 - `agent.credential_pool.load_pool`
@@ -43,8 +45,9 @@ Treat any of the following Hermes changes as a compatibility review blocker:
 3. Changes to the `manual:device_code` source semantics or OAuth ownership/refresh behavior.
 4. Changes to `write_credential_pool` locking, merge behavior, or intentional-removal handling.
 5. Changes to Codex usage snapshot fields (`available`, `windows`, `label`, `used_percent`, `reset_at`).
-6. Changes to `PluginContext.register_cli_command` or `register_command` callback contracts.
-7. Changes to Codex's default base URL or provider ID.
+6. Changes to `PluginContext.register_cli_command`, `register_command`, or `register_hook` callback contracts.
+7. Changes to `pre_credential_select` directive semantics or removal of `turn_id`, `credential_id`, or `credential_label` from `pre_api_request`.
+8. Changes to Codex's default base URL or provider ID.
 
 Do not work around these by reading or writing `auth.json` directly. Adapt the small compatibility boundary and rerun all tests against the new Hermes source.
 

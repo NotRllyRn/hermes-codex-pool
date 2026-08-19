@@ -6,6 +6,12 @@ All notable changes are documented here. Entries that require operator action ar
 
 _No changes._
 
+## [0.2.0] - 2026-08-19
+
+- Prefer the healthy Codex credential whose Weekly usage window resets first.
+- Report the credential Hermes actually uses once per turn through `pre_api_request` identity.
+- Require Hermes' post-0.20.4 credential-selection hook contract.
+
 ## [0.1.0] - 2026-08-19
 
 - Add terminal-only Codex OAuth credential import, list, rename, and remove commands.

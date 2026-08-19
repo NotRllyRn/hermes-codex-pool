@@ -1,17 +1,17 @@
 # hermes-codex-pool
 
-Manage multiple OpenAI Codex OAuth accounts in Hermes Agent and inspect each account's Session/Weekly usage.
+Manage multiple OpenAI Codex OAuth accounts in Hermes Agent, prefer the healthy account whose Weekly quota resets first, and inspect per-account usage.
 
-The plugin is intentionally only a credential manager and dashboard. Hermes continues to own OAuth refresh, cooldowns, retries, credential selection, and automatic failover.
+The plugin supplies policy and UI only. Hermes validates each preference and continues to own OAuth refresh, cooldowns, retries, credential switching, and automatic failover.
 
 ## Compatibility
 
-- Plugin: **0.1.0**
-- Built against: **Hermes Agent 0.20.0**
-- Plugin-Doctor verified against: **Hermes Agent 0.20.4 / main at `395c70d6` (2026-08-19)**
+- Plugin: **0.2.0**
+- Credential management baseline: **Hermes Agent 0.20.0**
+- Automatic preference requires the post-0.20.4 `pre_credential_select` and credential-identity hook contract
 - Python: **3.11–3.13**
 
-Hermes credential helpers used by this plugin are internal APIs. Review [COMPATIBILITY.md](COMPATIBILITY.md) before upgrading across Hermes versions.
+On older Hermes versions, use v0.1.0. Review [COMPATIBILITY.md](COMPATIBILITY.md) before upgrading.
 
 ## Install
 
@@ -72,9 +72,26 @@ There is no plugin-specific database. Hermes stores credentials in its normal au
 - Do not continuously share a rotating refresh token with another client; Hermes becomes its runtime owner after import.
 - A diagnostics failure only displays `usage unavailable`; it does not alter credential health.
 
+## Automatic preference
+
+Once per Codex turn, the plugin:
+
+1. considers locally healthy native pool entries;
+2. reads each entry's Weekly usage window through Hermes;
+3. requests the entry with the earliest valid Weekly reset;
+4. lets Hermes accept or reject that opaque credential ID.
+
+The first provider request then emits one truthful line using the identity Hermes actually reports:
+
+```text
+[Codex: work · Weekly 38% left · resets in 18h · earliest weekly reset]
+```
+
+If usage is incomplete, the plugin returns no preference and stock Hermes routing continues. Hermes may still rotate after refresh, authentication, quota, or rate-limit failures.
+
 ## What Hermes handles
 
-Hermes handles same-provider routing, rotation strategy, OAuth refresh, cooldowns, retries, rate/quota-limit failover, and cross-provider fallback. This plugin does not intercept model requests or replace those systems.
+Hermes handles credential validation, same-provider switching, rotation strategy, OAuth refresh, cooldowns, retries, rate/quota-limit failover, and cross-provider fallback. This plugin does not intercept model requests or replace those systems.
 
 ## Development
 
