@@ -61,7 +61,7 @@ The plugin system exposes both:
 
 Official documentation:
 
-- https://hermes-agent.nousresearch.com/docs/developer-guide/plugins
+- <https://hermes-agent.nousresearch.com/docs/developer-guide/plugins>
 - CLI registration section: `register_cli_command`
 - Slash command section: `register_command`
 
@@ -88,7 +88,7 @@ Current strategies are:
 
 Official documentation:
 
-- https://hermes-agent.nousresearch.com/docs/user-guide/features/credential-pools
+- <https://hermes-agent.nousresearch.com/docs/user-guide/features/credential-pools>
 
 Current upstream implementation:
 
@@ -1706,36 +1706,36 @@ Keeping that boundary is what makes this extension small, reliable, and maintain
 ### Official Hermes documentation
 
 1. **Build a Hermes Plugin**  
-   https://hermes-agent.nousresearch.com/docs/developer-guide/plugins
+   <https://hermes-agent.nousresearch.com/docs/developer-guide/plugins>
 
 2. **Credential Pools**  
-   https://hermes-agent.nousresearch.com/docs/user-guide/features/credential-pools
+   <https://hermes-agent.nousresearch.com/docs/user-guide/features/credential-pools>
 
 ### Current Hermes upstream source researched on 2026-08-11
 
-3. **PluginContext / plugin loader**  
-   https://github.com/NousResearch/hermes-agent/blob/main/hermes_cli/plugins.py
+1. **PluginContext / plugin loader**  
+   <https://github.com/NousResearch/hermes-agent/blob/main/hermes_cli/plugins.py>
 
-4. **Credential pool**  
-   https://github.com/NousResearch/hermes-agent/blob/main/agent/credential_pool.py
+2. **Credential pool**  
+   <https://github.com/NousResearch/hermes-agent/blob/main/agent/credential_pool.py>
 
-5. **Auth/persistence helpers**  
-   https://github.com/NousResearch/hermes-agent/blob/main/hermes_cli/auth.py
+3. **Auth/persistence helpers**  
+   <https://github.com/NousResearch/hermes-agent/blob/main/hermes_cli/auth.py>
 
-6. **Built-in auth commands / Codex add flow**  
-   https://github.com/NousResearch/hermes-agent/blob/main/hermes_cli/auth_commands.py
+4. **Built-in auth commands / Codex add flow**  
+   <https://github.com/NousResearch/hermes-agent/blob/main/hermes_cli/auth_commands.py>
 
-7. **Account usage / Codex quota parser**  
-   https://github.com/NousResearch/hermes-agent/blob/main/agent/account_usage.py
+5. **Account usage / Codex quota parser**  
+   <https://github.com/NousResearch/hermes-agent/blob/main/agent/account_usage.py>
 
-8. **Hermes package metadata**  
-   https://github.com/NousResearch/hermes-agent/blob/main/pyproject.toml
+6. **Hermes package metadata**  
+   <https://github.com/NousResearch/hermes-agent/blob/main/pyproject.toml>
 
 ### Local repositories reviewed
 
-9. Uploaded `hermes-agent-main` (`0.20.0`) — used to verify the same core plugin/credential APIs in the supplied source snapshot.
+1. Uploaded `hermes-agent-main` (`0.20.0`) — used to verify the same core plugin/credential APIs in the supplied source snapshot.
 
-10. Uploaded `pi-relay-main` — used to identify the useful management/status UX to retain while deliberately excluding its routing/vault/refresh/wait layers from the Hermes design.
+2. Uploaded `pi-relay-main` — used to identify the useful management/status UX to retain while deliberately excluding its routing/vault/refresh/wait layers from the Hermes design.
 
 ---
 
