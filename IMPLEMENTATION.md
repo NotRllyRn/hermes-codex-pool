@@ -1407,7 +1407,7 @@ Never include a raw exception if it may include Authorization headers/tokens. In
 ### Phase 5 — tests/docs
 
 - [x] Add isolated unit tests; no real OpenAI or Hermes-home access.
-- [ ] Test native persistence against temporary `HERMES_HOME` in an installed Hermes runtime.
+- [x] Test native add/list/rename/remove persistence against temporary `HERMES_HOME` on Hermes 0.20.4.
 - [ ] Install from GitHub into a clean Hermes instance.
 - [ ] Import two token pairs.
 - [ ] Confirm `hermes auth list openai-codex` sees the same entries.
