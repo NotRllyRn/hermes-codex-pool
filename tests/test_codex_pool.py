@@ -306,3 +306,12 @@ def test_missing_hermes_api_is_sanitized(monkeypatch, capsys):
     output = capsys.readouterr().out
     assert subject.INCOMPATIBLE in output
     assert "sensitive path" not in output
+
+
+def test_command_errors_do_not_echo_exception_details(monkeypatch, capsys):
+    monkeypatch.setattr(subject, "load_pool", lambda _provider: (_ for _ in ()).throw(ValueError("access-secret")))
+    subject.handle_cli(SimpleNamespace(codex_pool_action="list"))
+    output = capsys.readouterr().out
+    assert "Credential details were not displayed" in output
+    assert "access-secret" not in output
+    assert "access-secret" not in subject.handle_slash("status")

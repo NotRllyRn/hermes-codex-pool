@@ -100,6 +100,8 @@ def handle_cli(args) -> None:
             result = "Unknown codex-pool action."
     except CompatibilityError:
         result = INCOMPATIBLE
+    except Exception:
+        result = "Codex pool command failed. Credential details were not displayed."
     print(result)
 
 
@@ -283,6 +285,8 @@ def handle_slash(raw_args: str) -> str:
             return status_accounts()
         except CompatibilityError:
             return INCOMPATIBLE
+        except Exception:
+            return "Codex pool status unavailable. Credential details were not displayed."
     if action == "help":
         return "Usage: /codex-pool [status|help]"
     return "Credential changes are terminal-only. Use: hermes codex-pool --help"
