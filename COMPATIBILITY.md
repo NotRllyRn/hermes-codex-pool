@@ -16,8 +16,8 @@ This file is the update checkpoint. Change the commit, package version, date, an
 
 | Plugin | Hermes | Status | Verification |
 | --- | --- | --- | --- |
-| 0.1.0 | 0.20.0 | Built against | API source + unit tests |
-| 0.1.0 | 0.20.4 | Source-compatible | API source at `395c70d6` + unit tests |
+| 0.1.0 | 0.20.0 | Verified | Real-API import, credential construction, registration + unit tests |
+| 0.1.0 | 0.20.4 | Verified | Hermes Plugin Doctor at `395c70d6` + unit tests |
 
 A live Codex login, token refresh, quota exhaustion, and provider failover require real accounts and are not exercised by the unit suite.
 

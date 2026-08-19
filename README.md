@@ -8,7 +8,7 @@ The plugin is intentionally only a credential manager and dashboard. Hermes cont
 
 - Plugin: **0.1.0**
 - Built against: **Hermes Agent 0.20.0**
-- Source-checked against: **Hermes Agent 0.20.4 / main at `395c70d6` (2026-08-19)**
+- Plugin-Doctor verified against: **Hermes Agent 0.20.4 / main at `395c70d6` (2026-08-19)**
 - Python: **3.11–3.13**
 
 Hermes credential helpers used by this plugin are internal APIs. Review [COMPATIBILITY.md](COMPATIBILITY.md) before upgrading across Hermes versions.
