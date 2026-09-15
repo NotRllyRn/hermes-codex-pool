@@ -1,3 +1,9 @@
+# Archived
+
+In favor of [Codex Broker](NotRllyRn/codex-windowkeeper)
+
+Use [This branch](https://github.com/NotRllyRn/hermes-agent-codex-broker) of Hermes.
+
 # hermes-codex-pool
 
 Manage multiple OpenAI Codex OAuth accounts in Hermes Agent, prefer the healthy account whose Weekly quota resets first, and inspect per-account usage.
